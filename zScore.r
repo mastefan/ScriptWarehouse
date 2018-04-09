@@ -11,47 +11,64 @@
 #' Rodriguez-Galiano calculated z scores excluding the targeted year in 
 #' the multi-year mean to enhance inter-annual variation.
 #' 
-#' @param data (raster objects?) (files?)
+#' @param file A path to file containing stacked phenology data.
 #' @param ncores numeric. Number of cores to be used for processing
 
-zScore <- function(data=NULL,ncores=1){
-  
-  # stop if no data is provided
-  if(is.null(data)){
-    stop('Please specify data source.')
-  }
-  
-  # load data
-  
-  # 
-  # 
+zScore <- function(file=NULL,ncores=1){
   
   # set up for multi-core processing
   beginCluster(ncores,type='SOCK')
   
-  # multi-year mean (for all years)
-  mym <- raster::calc(data, fun=mean, na.rm=TRUE)
-  
-  # multi-year mean (excluding target year)
-  test <- array(1:27,c(3,3,3))
-  layers <- length(test[,,3])
-  
-  for(i in layers){
-    a <- mean(data[-i])
-    return(a)
+  # stop if no data is provided
+  if(is.null(file)){
+    stop('Please specify a file path.')
   }
   
-  # multi-year sd
-  mys <- raster::calc(data, fun=sd, na.rm=TRUE)
+  # load data
+  data <- suppressWarnings(raster::brick(file))
   
-  # calculate z score
-  z <- raster::calc(data, fun=function(x){data-mym}) #does this calculate by pixel by year? i think so...
+  # create output raster object using characteristics of input file
+  result <- raster::brick(crs = raster::crs(data),
+                          nl = raster::nbands(data))
+  raster::extent(result) <- raster::extent(data)
   
-  # normalize
-  z.n <- raster::calc(z, fun=function(x){z/mys})
+  # calculate the sd
+  sd <- raster::calc(data,
+                     fun = sd,
+                     na.rm = TRUE)
+  
+  # get number of bands to create vector to pass to for loop
+  band_num <- raster::nbands(data)
+  
+  # calculate Z-score for each layer in data
+  for (i in 1:band_num){
+    
+    # calculate the mean of all years excluding i
+    mn <- raster::calc(x = data[[-i]],
+                       fun = mean,
+                       na.rm = TRUE)
+    
+    # calculate the z score - which one works?
+    z <- raster::calc(x = data,
+                      fun = function(x) x[[i]] - mn[[i]],
+                      na.rm = TRUE)
+    
+    z <- raster::stackApply(x = data,
+                            indices = ind,
+                            fun = function(x) x - mn,
+                            na.rm = TRUE)
+    
+    # normalize the z score
+    z_n <- raster::calc(x = z,
+                        fun = function(x) {z[[i]] / sd},
+                        na.rm = TRUE)
+    
+    # write the z score to the appropriate band in result
+    result[[i]] <- z_n
+  }
   
   #return result
-  return(z.n)
+  return(result)
   
   # end multi-core processing
   endCluster()
