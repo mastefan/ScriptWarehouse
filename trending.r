@@ -27,8 +27,12 @@ trending <- function(file = NULL, change = FALSE, threshold = NULL){
   time <- 1:raster::nlayers(dat)
   
   # calculate linear trend
-  fun_t <- function(x) { if (is.na(x[1])){ NA } 
-    else {lm(x ~ time)$coefficients[2] }}
+  fun_t <- function(x) {
+    if (is.na(x[1])){
+      NA 
+    } else {
+      lm(x ~ time)$coefficients[2] }
+    }
   trend <- raster::calc(dat, fun_t)
   
   # calculate change over time
@@ -41,10 +45,17 @@ trending <- function(file = NULL, change = FALSE, threshold = NULL){
     return(trend)
   }
   
+  # if threshold specified, return only pixels above threshold
   if(!is.null(threshold)){
     # calculate p-values
-    fun_p <- function(x) { if (is.na(x[1])){ NA } 
-      else {m = lm(x ~ time); summary(m)$coefficients[8] }}
+    fun_p <- function(x) { 
+      if (is.na(x[1])){
+        NA 
+      } else {
+        m = lm(x ~ time); summary(m)$coefficients[8]
+      }
+    }
+    
     p_val <- raster::calc(dat, fun_p)
     
     # reclassify p-values at desired threshold
