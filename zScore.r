@@ -33,9 +33,12 @@ zScore <- function(file=NULL,ncores=1){
   raster::extent(result) <- raster::extent(data)
   
   # calculate the sd
-  sd <- raster::calc(data,
-                     fun = sd,
-                     na.rm = TRUE)
+  f1 <- function(data) { raster::calc(x = data, fun = sd, na.rm = TRUE) }
+  sd <- raster::clusterR(data, fun = f1)
+  
+  #sd <- raster::calc(data,
+  #                   fun = sd,
+  #                   na.rm = TRUE)
   
   # get number of bands to create vector to pass to for loop
   band_num <- raster::nbands(data)
@@ -44,7 +47,7 @@ zScore <- function(file=NULL,ncores=1){
   for (i in 1:band_num){
     
     # calculate the mean of all years excluding i
-    mn <- raster::calc(x = data[[-i]],
+    mn <- raster::calc(x = data[[-i]], # should this just be [-i] or !i?
                        fun = mean,
                        na.rm = TRUE)
     
