@@ -27,48 +27,59 @@ zScore <- function(file=NULL,ncores=1){
   # load data
   data <- suppressWarnings(raster::brick(file))
   
-  # create output raster object using characteristics of input file
-  result <- raster::brick(crs = raster::crs(data),
-                          nl = raster::nbands(data))
-  raster::extent(result) <- raster::extent(data)
+  ## create output raster object using characteristics of input file
+  #result <- raster::brick(crs = raster::crs(data),
+  #                        nl = raster::nbands(data))
+  #raster::extent(result) <- raster::extent(data)
   
   # calculate the sd
-  sd <- raster::calc(data,
-                     fun = sd,
-                     na.rm = TRUE)
+  #sd <- raster::calc(data,
+  #                   fun = sd,
+  #                   na.rm = TRUE)
   
-  # get number of bands to create vector to pass to for loop
-  band_num <- raster::nbands(data)
+  f1 <- function(data) { raster::calc(x = data, fun = sd, na.rm = TRUE) }
+  sd <- raster::clusterR(data, fun = f1)
   
   # calculate Z-score for each layer in data
-  for (i in 1:band_num){
+  for (i in 1:raster::nbands(data)){
     
     # calculate the mean of all years excluding i
-    mn <- raster::calc(x = data[[-i]],
-                       fun = mean,
-                       na.rm = TRUE)
+    #mn <- raster::calc(x = data[[-i]], # should this just be [-i] or !i?
+    #                   fun = mean,
+    #                   na.rm = TRUE)
     
+    f2 <- function(data){ raster::calc(x = data[!i], fun = mean, na.rm = TRUE) }
+    mn[[i]] <- raster::clusterR(x = data, fun = f3)
+  }
     # calculate the z score - which one works?
-    z <- raster::calc(x = data,
-                      fun = function(x) x[[i]] - mn[[i]],
-                      na.rm = TRUE)
+    #z <- raster::calc(x = data,
+    #                  fun = function(x) x[[i]] - mn[[i]],
+    #                  na.rm = TRUE)
+    f3 <- function(data, mn) { data - mn }
+    z <- raster::clusterR(x = data, fun = raster::overlay,
+                          args = list(x = data, y = mn,
+                                      fun = f3, na.rm = TRUE))
     
-    z <- raster::stackApply(x = data,
-                            indices = ind,
-                            fun = function(x) x - mn,
-                            na.rm = TRUE)
+    #z <- raster::stackApply(x = data,
+    #                        indices = ind,
+    #                        fun = function(x) x - mn,
+    #                        na.rm = TRUE)
     
     # normalize the z score
-    z_n <- raster::calc(x = z,
-                        fun = function(x) {z[[i]] / sd},
-                        na.rm = TRUE)
+    #z_n <- raster::calc(x = z,
+    #                    fun = function(x) {z[[i]] / sd},
+    #                    na.rm = TRUE)
+    f4 <- function(z, sd) { z / sd }
+    z <- raster::clusterR(x = z, fun = raster::overlay,
+                          args = list(x = z, y = sd,
+                                      fun = f4, na.rm = TRUE))
     
-    # write the z score to the appropriate band in result
-    result[[i]] <- z_n
-  }
+    ## write the z score to the appropriate band in result
+    #result[[i]] <- z_n
+  #}
   
-  #return result
-  return(result)
+  ##return result
+  #return(result)
   
   # end multi-core processing
   endCluster()
