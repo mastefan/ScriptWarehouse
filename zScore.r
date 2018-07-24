@@ -75,11 +75,15 @@ zScore <- function(file=NULL, na.rm = TRUE, parallel = TRUE, ncores=2, test = FA
   # calculate the z score
   cat('\n calculating z scores')
   if(parallel == TRUE){
-    z <- raster::clusterR(x = data, fun = raster::overlay, 
-                          args=list(x = data, y = mn, 
-                                    fun = function(data, mn){ data - mn }, 
-                                    na.rm = na.rm), 
-                          export = "mn")
+    #z <- raster::clusterR(x = data, fun = raster::overlay, 
+    #                      args=list(x = data, y = mn, 
+    #                                fun = function(data, mn){ data - mn }, 
+    #                                na.rm = na.rm), 
+    #                      export = "mn")
+    z <- raster::clusterR(x = data, fun = function(data, mn){
+      raster::overlay(x = data, y = mn,
+                      fun = function(data, mn){ data-mn },
+                      na.rm = na.rm) }, export = 'mn')
   } else {
     z <- raster::overlay(x = data, y = mn, 
                          fun = function(data, mn){ data - mn }, 
@@ -89,13 +93,18 @@ zScore <- function(file=NULL, na.rm = TRUE, parallel = TRUE, ncores=2, test = FA
   # normalize the z score
   cat('\n normalizing z scores')
   if(parallel == TRUE){
+    #z <- raster::clusterR(x = z, fun = raster::overlay,
+    #                      args=list(x = z, y = sd, 
+    #                                fun = function(z, sd){ z / sd },
+    #                                na.rm = na.rm))
     z <- raster::clusterR(x = z, fun = function(z, sd){
-      raster::overlay(x = z, y = sd, fun = function(x, y){
-        z / sd }, na.rm = na.rm)
-    }, export = 'sd')
+      raster::overlay(x = z, y = sd,
+                      fun = function(z, sd){ z / sd },
+                      na.rm = na.rm)}, export = 'sd')
   } else {
-    z <- raster::overlay(x = z, y = sd, fun = function(z, sd){
-      z / sd }, na.rm = na.rm)
+    z <- raster::overlay(x = z, y = sd, 
+                         fun = function(z, sd){ z / sd },
+                         na.rm = na.rm)
   }
   
   # end multi-core processing
