@@ -1,14 +1,5 @@
+## testing Stackoverflow feedback
 # example data
-data <- raster::brick(nl = 5)
-
-data <- raster::setValues(data, rnorm((nrow(data)*ncol(data)), 10, 2), 1)
-data <- raster::setValues(data, rnorm((nrow(data)*ncol(data)), 12, 2), 2)
-data <- raster::setValues(data, rnorm((nrow(data)*ncol(data)), 14, 2), 3)
-data <- raster::setValues(data, rnorm((nrow(data)*ncol(data)), 16, 2), 4)
-data <- raster::setValues(data, rnorm((nrow(data)*ncol(data)), 18, 2), 5)
-
-names(data) <- 1:5
-
 data("Rlogo")
 data <- raster::brick(Rlogo)
 raster::plot(data)
@@ -56,3 +47,15 @@ for(i in set){
 }
 raster::endCluster()
 rm(i, set)
+
+
+## timing parallel vs standard processing
+# standard run
+system.time(zScore(file = "tin_a2a.tif", parallel = FALSE, na.rm = TRUE))
+### result: 254s total
+
+# parallel run
+system.time(zScore(file = "tin_a2a.tif", parallel = TRUE, ncores = 7, na.rm = TRUE))
+### result: 360s total
+
+#### the standard run is faster
