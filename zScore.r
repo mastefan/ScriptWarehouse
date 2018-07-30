@@ -24,7 +24,7 @@
 #' 
 #' Note that the parallel processing has been very buggy and may hang.
 
-zScore <- function(file=NULL, na.rm = TRUE, parallel = TRUE, ncores=2, test = FALSE){
+zScore <- function(file=NULL, na.rm = TRUE, parallel = TRUE, ncores=2){
   
   # stop if no data is provided
   if(is.null(file)){
@@ -40,12 +40,8 @@ zScore <- function(file=NULL, na.rm = TRUE, parallel = TRUE, ncores=2, test = FA
   }
   
   # load data
-  if(test == FALSE){
-    data <- suppressWarnings(raster::brick(file))
-  } else {
-    data <- raster::brick(raster::stack(file, bands = 1:5))
-  }
-  
+  data <- suppressWarnings(raster::brick(file))
+
   # calculate SD of stack
   cat('\n calculating standard deviation')
   if(parallel == TRUE){
@@ -70,20 +66,17 @@ zScore <- function(file=NULL, na.rm = TRUE, parallel = TRUE, ncores=2, test = FA
     }
     mn[[i]] <- mn_i
   }
-  rm(mn_i, wrk, i, set, subset)
     
   # calculate the z score
   cat('\n calculating z scores')
   if(parallel == TRUE){
-    #z <- raster::clusterR(x = data, fun = raster::overlay, 
-    #                      args=list(x = data, y = mn, 
-    #                                fun = function(data, mn){ data - mn }, 
-    #                                na.rm = na.rm), 
-    #                      export = "mn")
-    z <- raster::clusterR(x = data, fun = function(data, mn){
-      raster::overlay(x = data, y = mn,
-                      fun = function(data, mn){ data-mn },
-                      na.rm = na.rm) }, export = 'mn')
+    fun1 <- function(x,y){x-y}
+    z <- data
+    for(i in set){
+      wrk <- raster::stack(data[[i]],mn[[i]])
+      z_i <- raster::clusterR(x = wrk, fun = raster::overlay, args = list(fun = fun1, na.rm = na.rm))
+      z[[i]] <- z_i
+    }
   } else {
     z <- raster::overlay(x = data, y = mn, 
                          fun = function(data, mn){ data - mn }, 
@@ -93,14 +86,12 @@ zScore <- function(file=NULL, na.rm = TRUE, parallel = TRUE, ncores=2, test = FA
   # normalize the z score
   cat('\n normalizing z scores')
   if(parallel == TRUE){
-    #z <- raster::clusterR(x = z, fun = raster::overlay,
-    #                      args=list(x = z, y = sd, 
-    #                                fun = function(z, sd){ z / sd },
-    #                                na.rm = na.rm))
-    z <- raster::clusterR(x = z, fun = function(z, sd){
-      raster::overlay(x = z, y = sd,
-                      fun = function(z, sd){ z / sd },
-                      na.rm = na.rm)}, export = 'sd')
+    fun2 <- function(x,y){x/y}
+    for(i in set){
+      wrk <- raster::stack(z[[i]], sd)
+      z_i <- raster::clusterR(x = wrk, fun = raster::overlay, args = list(fun = fun2, na.rm = na.rm))
+      z[[i]] <- z_i
+    }
   } else {
     z <- raster::overlay(x = z, y = sd, 
                          fun = function(z, sd){ z / sd },
