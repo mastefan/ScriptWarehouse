@@ -103,8 +103,11 @@ zScore <- function(file=NULL, na.rm = TRUE, parallel = TRUE, ncores=2){
     raster::endCluster() 
   }
   
+  # name bands in output
+  names(z) <- names(data)
+  
   # peoplespeak
-  cat("\n c'est fini")
+  cat("\n c'est fini\n")
   
   #return result
   return(z)
