@@ -107,7 +107,7 @@ zScore <- function(file=NULL, na.rm = TRUE, parallel = TRUE, ncores=2){
   names(z) <- names(data)
   
   # peoplespeak
-  cat("\n c'est fini\n")
+  cat("\n c'est fini!\n")
   
   #return result
   return(z)
