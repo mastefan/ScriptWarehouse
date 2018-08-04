@@ -2,6 +2,9 @@
 #' 
 #' Calculates pixel-wise SPEI values for Daymet data
 #' 
+#' Uses for loops and pixel indexing
+#' This function is ~4x faster than gridSPEI2 for a small dataset
+#' 
 #' @param tmean File path or raster object. Monthly average temperature.
 #' @param prcp File path or raster object. Monthly total precipitation.
 #' @param scale Numeric. At which scale should SPEI be calculated 
@@ -77,7 +80,8 @@ gridSPEI <- function(tmean = NULL, prcp = NULL,
     names(spei) <- sprintf("SPEI.%s",names(tmean))
     result <- raster::stack(pet, spei)
   } else {
-    names(spei) <- names(tmean)
+    result <- raster::setZ(spei, dates, name = "time")
+    names(result) <- zoo::as.yearmon(raster::getZ(tmean))
     result <- spei
   }
   # perhaps it would be useful to include metadata with other outputs from SPEI later...
