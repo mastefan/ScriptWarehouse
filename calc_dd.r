@@ -1,14 +1,15 @@
 #' calc_dd
 #' 
-#' @param tmean
-#' @param threshold
+#' @param tmean daily average temperature data for one year (365 days)
+#' @param threshold temperature threshold (use same units as data)
 #' @param index options are "grow" or "chill"
-#' @param accumulate T/F
-#' @param start
-#' @param end
+#' @param accumulate should degree days be accumulated? TRUE / FALSE
+#' @param start starting day (1 - 365)
+#' @param end ending day (1 - 365)
 #' 
+#' Note that na.rm is set to TRUE
 
-calc_dd <- function(tmean = NULL, threshold = NULL, index = NULL, start = 1, end = 365){
+calc_dd <- function(tmean = NULL, threshold = NULL, index = NULL, start = 1, end = 365, accumulate = FALSE){
   
   # input checks
   if(is.null(tmean)) { stop("please provide tmin and tmean data") }
@@ -58,23 +59,26 @@ calc_dd <- function(tmean = NULL, threshold = NULL, index = NULL, start = 1, end
   result <- raster::overlay(x = tmean, y = thresh, 
                             fun = Vectorize(f), recycle = TRUE)
   
-  # accumulate
+  # accumulate if told to do so
   if(accumulate == TRUE){
-    # create new stack
-    daily <- raster::stack(x = result, layers = start:end)
+    # create new stacks
+    a <- raster::brick(raster::stack(x = result, layers = start:end), values = TRUE)
     
-    # calculate daily backward-looking sum
-    for(i in 1:raster::nlayers(wrk)){
-      daily[[i]] <- raster::calc(x = raster::stack(daily, bands = 1:i), fun = sum, na.rm = TRUE)
+    # function to calculate accumulated sum
+    sum_f <- function(x){
+      y <- x
+      for(i in 1:length(x)){
+        y[i] <- sum(x[1:i])
+      }
+      return(y)
     }
     
-    # calculate total sum
-    total <- raster::calc(x = daily, fun = sum, na.rm = TRUE)
+    # run function within calc
+    b <- raster::calc(a, fun = sum_f, forcefun = TRUE)
     
-    # combine results
-    names(daily) <- 1:365
-    names(total) <- "total"
-    result <- raster::brick(daily, total)
+    # format results
+    names(b) <- start:end
+    result <- b
   }
   
   # return result
