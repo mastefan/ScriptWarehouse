@@ -1,4 +1,11 @@
 bai_breaker <- function(data, plot = FALSE, breaks = NULL){
+  # remove NAs if any are present
+  if(any(is.na(data))){
+    a <- !is.na(data)
+    b <- data[a==TRUE]
+    data <- ts(b, start = min(as.numeric(names(b))), end = max(as.numeric(names(b))))
+  }
+  
   # create vector of breakdates with series start and end dates attached
   if(is.null(breaks)){
     dx <- strucchange::breakdates(strucchange::breakpoints(data~time(data), 
@@ -7,8 +14,18 @@ bai_breaker <- function(data, plot = FALSE, breaks = NULL){
     dx <- strucchange::breakdates(strucchange::breakpoints(data~time(data), breaks = breaks, 
                                                            het.err = TRUE))
   }
+  
   years <- as.numeric(time(data))
-  dx <- c((min(years)-1), dx, max(years))
+  
+  suppressWarnings(
+    if(is.na(dx)){
+      # no breakpoints
+      dx <- c(min(years-1), max(years))
+    } else {
+      # roll breakpoints into date series
+      dx <- c((min(years)-1), dx, max(years))
+    }
+  )
   
   # create bins from dates
   bins <- cut(x = as.numeric(time(data)), breaks = dx, labels = FALSE)
@@ -61,7 +78,6 @@ bai_breaker <- function(data, plot = FALSE, breaks = NULL){
       a[i] <- list(b)
       c[i] <- list(rep(segs[i], times = length(b)))
     }
-  }
   
   # create dataframes interpretable by ggplot2
   t_lines <- data.frame(yrs = seq(dx[1], dx[length(dx)], by = 1), val = unlist(a), seg = unlist(c))
@@ -72,7 +88,8 @@ bai_breaker <- function(data, plot = FALSE, breaks = NULL){
     ggplot2::ggplot(data, ggplot2::aes(x = yrs, y = val)) + 
       ggplot2::theme_light() + 
       ggplot2::geom_line(inherit.aes = TRUE) + 
-      ggplot2::geom_line(data = t_lines, ggplot2::aes(x = yrs, y = val, col = seg)) + 
+      ggplot2::geom_line(data = t_lines, ggplot2::aes(x = yrs, y = val, col = seg), lwd = 0.8) + 
       ggplot2::labs(x = "Year", y = "BAI (mm^2/year)")
   )
+  }
 }

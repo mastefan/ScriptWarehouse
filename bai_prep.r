@@ -36,8 +36,8 @@ bai_prep <- function(in.data, in.plot, biweight = FALSE, window = NULL){
                                     ignore.case = TRUE, 
                                     pattern = in.plot))
     a <- rowMeans(a, na.rm = TRUE)
-    d <- ts(a, start = min(as.numeric(rownames(a))), 
-            end = max(as.numeric(rownames(a))))
+    d <- ts(a, start = min(as.numeric(rownames(in.data))), 
+            end = max(as.numeric(rownames(in.data))))
     
     if(!is.null(window)){
       d <- window(d, window[1], window[2])
