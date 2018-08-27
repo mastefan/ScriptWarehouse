@@ -1,0 +1,169 @@
+---
+title: "table_construction_test"
+author: "Mike Stefanuk"
+date: "August 6, 2018"
+output: word_document
+---
+
+Lost my old document on creating tables to feed to random forest. Here is v2.
+
+Stage 1: Create some test data...
+
+```{r test data, echo = FALSE}
+# test data
+avhrrp <- raster::brick(array(rnorm(n = (5*5*12), mean = 1.0, sd = 0.2), c(5,5,12)))
+avhrrp <- raster::brick(raster::stack(avhrrp, avhrrp, avhrrp, avhrrp, avhrrp))
+
+temp <- raster::brick(array(rnorm(n = (5*5*12), mean = 15, sd = 5), c(5,5,12)))
+temp <- raster::brick(raster::stack(temp, temp, temp, temp, temp))
+
+prcp <- raster::brick(array(rnorm(n = (5*5*12), mean = 2, sd = 10), c(5,5,12)))
+prcp <- raster::brick(raster::stack(prcp, prcp, prcp, prcp, prcp))
+prcp[prcp < 0] <- 0
+
+indx <- raster::brick(array(rnorm(n = (5*5*12), mean = 50, sd = 15), c(5,5,12)))
+indx <- raster::brick(raster::stack(indx, indx, indx, indx, indx))
+
+# set names of test data to months and years 
+months <- zoo::as.yearmon(seq(from = as.Date("1901-01-15"),
+                              to = as.Date("1905-12-15"),
+                              by = "month"))
+
+avhrrp <- raster::setZ(avhrrp, months, name = "time")
+names(avhrrp) <- months
+
+temp <- raster::setZ(temp, months, name = "time")
+names(temp) <- months
+
+prcp <- raster::setZ(prcp, months, name = "time")
+names(prcp) <- months
+
+indx <- raster::setZ(indx, months, name = "time")
+names(indx) <- months
+
+rm(months)
+
+```
+
+Ok, test data is created, names are set and z values are set.
+
+Stage 2: play with table creation
+
+```{r table creation 1, echo = FALSE, message = FALSE}
+# convert avhrrp to an ordered column
+a1 <- raster::as.data.frame(avhrrp)
+a2s <- stack(a1) # results are ok but formatting is annoying
+a2u <- unlist(a1) # produces a named vector but order of months is wrong
+a2r <- reshape2::melt(a1, na.rm = FALSE) # works great!!
+
+a <- reshape2::melt(raster::as.data.frame(avhrrp), na.rm = FALSE)
+b <- reshape2::melt(raster::as.data.frame(temp),   na.rm = FALSE)
+c <- reshape2::melt(raster::as.data.frame(prcp),   na.rm = FALSE)
+d <- reshape2::melt(raster::as.data.frame(indx),   na.rm = FALSE)
+
+# create dataframe
+dframe <- data.frame(time = a$variable, avhrrp = a$value,
+                     temp = b$value, prcp = c$value, indx = d$value)
+
+# cleanup
+rm(a1,a2s, a2u, a2r, a, b, c, d)
+
+```
+
+This method seems to make a nice logical dataframe.
+
+Can I make a function to construct such a dataframe with different numbers of inputs?
+
+```{r function test, echo = FALSE}
+# make a function to create a dataframe by taking different numbers of arguments
+maker <- function(in.data = NULL, na.rm = FALSE){
+  
+  # check that the inputs are a list
+  if(class(in.data) != "list"){
+    stop("input data must be given as a list")
+  }
+  
+  # create an output list
+  out <- list()
+  
+  # loop through items on list
+  for(i in 1:length(names(in.data))){
+    # convert raster brick to dataframe
+    o1 <- raster::as.data.frame(in.data[[i]])
+    
+    # add pixel number identifier to dataframe
+    o2 <- data.frame(pix = rownames(o1), o1)
+    
+    # convert dataframe to long format
+    o3 <- reshape2::melt(o2, id = "pix")
+    
+    # write value strings
+    out[i] <- list(o3$value)
+    
+  }
+  
+  # convert to dataframe
+  out <- as.data.frame(out)
+  
+  # assign rownames to dataframe
+  ## month.year.pixel
+  rownames(out) <- paste0(o3[,2], ".", o3[,1])
+  
+  if(na.rm == TRUE){
+    # filter out rows where the first value column is NA
+    out <- dplyr::filter(out, !is.na(names(out)[1]))
+  }
+  
+  # assign column names
+  colnames(out) <- names(in.data)
+  
+  # return result
+  return(out)
+}
+
+```
+
+```{r function testing}
+
+# create a list of inputs, avhrrp being first
+l <- list(avhrr = avhrrp, tmp = temp, prc = prcp, ind = indx)
+
+# run function and view header
+t1 <- maker(l)
+
+# view header
+head(t1)
+
+```
+
+Now, let's see if this can be made to work with randomForest
+
+Requirements
+
+- y = response = avhrrp (might be easiest to have this in its own df)
+
+- x = predictor = climate (these should be combined into one df)
+
+- making a single dataframe as above is likely not the best way to go
+
+Stage 3 : Random Forest Functionality
+
+```{r randomForest, echo = FALSE}
+
+t2 <- randomForest::tuneRF(x = data.frame(t1$tmp, t1$prc, t1$ind), 
+                           y = t1$avhrr)
+
+t3 <- randomForest::randomForest(data = t1, avhrr~.,
+                                 #do.trace = (nrow(t1)/100), # prints some tree info
+                                 importance = TRUE, 
+                                 mtry = 2, 
+                                 replace = TRUE)
+
+randomForest::importance(t3)
+
+randomForest::partialPlot(t3, pred.data = t1, x.var = "tmp")
+randomForest::partialPlot(t3, pred.data = t1, x.var = "prc")
+randomForest::partialPlot(t3, pred.data = t1, x.var = "ind")
+
+```
+
