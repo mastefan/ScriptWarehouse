@@ -1,20 +1,19 @@
-#' pointSPEI
+#' SPEI calculator for station data
 #' 
-#' Calculate SPEI using point climate data. Will feed to the workspace and can write an output file.
+#' Takes weather station data inputs and provides SPEI in the same format
 #' 
-#' @param path Directory path
-#' @param region Name of region (in quotes "")
-#' @param temp Name of mean temperature data file (in quotes "")
-#' @param prcp Name of precipitation data file (in quotes "")
-#' @param latitude Latitude of station data. Use mean when using several stations. (numeric)
-#' @param scale Number of months to use as scale value (numeric)
-#' @param write Should a file be written? (.csv file in directory specified by path)
-#' 
+#' @param temp Vector containing the file path to monthly mean temperature data
+#' @param prcp Vector containing the file path to monthly total precipitation data
+#' @param latitude As in SPEI::spei
+#' @param scale As in SPEI::spei
+#' @param write Should the output be written to file? To write an output file provide
+#'  a vector containing the file path, including name, of the file to be written.
 
-pointSPEI <- function(path, region, temp, prcp, latitude, scale, write){
+SPEIstation <- function(temp = NULL, prcp = NULL, latitude = 45, scale = 1, write = FALSE){
+  
   # load data
-  tme <- read.csv(file = sprintf("%s/%s", path, temp), header = TRUE)
-  prt <- read.csv(file = sprintf("%s/%s", path, prcp), header = TRUE)
+  tme <- read.csv(file = temp, header = TRUE)
+  prt <- read.csv(file = prcp, header = TRUE)
   
   # match lengths if there is a mismatch
   if(nrow(tme) != nrow(prt)){
@@ -56,12 +55,14 @@ pointSPEI <- function(path, region, temp, prcp, latitude, scale, write){
   # output formatting
   spei.o <- data.frame(Year = tme$Year, Month = tme$variable, SPEI = round(spei$fitted, 2))
   colnames(spei.o) <- c('Year','Month','SPEI')
+  spei.o <- dplyr::filter(spei.o, !is.na(spei.o$Year))
   spei.w <- tidyr::spread(data = spei.o, key = Month, value = SPEI)
   colnames(spei.w) <- nm
+  spei.w <- tibble::column_to_rownames(spei.w, var = "X")
   
   # write output
-  if(write == TRUE){
-    write.csv(x = spei.w, file = sprintf("%s/%s_spei_%s.csv", path, region, scale))
+  if(write != FALSE){
+    write.csv(x = spei.w, file = write)
   }
   
   return(spei.w)
