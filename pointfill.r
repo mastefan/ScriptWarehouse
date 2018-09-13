@@ -29,6 +29,11 @@ pointfill <- function(tofill = NULL, filler = NULL, station = FALSE, station.nam
     station = TRUE
   }
   
+  # get rownames of climate data
+  ymax <- max(max(as.numeric(rownames(filler)), max(as.numeric(rownames(tofill)))))
+  ymin <- min(min(as.numeric(rownames(filler)), min(as.numeric(rownames(tofill)))))
+  yset <- ymin:ymax
+  
   # create output matrix
   out <- as.data.frame(matrix(nrow = nrow(tofill), ncol = ncol(tofill)))
   rownames(out) <- rownames(tofill)
@@ -71,6 +76,9 @@ pointfill <- function(tofill = NULL, filler = NULL, station = FALSE, station.nam
     }
   }
   out <- round(out, 1)
+  
+  # set rownames of climate data
+  try(rownames(out) <- yset, silent = TRUE)
   
   # create station labels
   if(isTRUE(station)){
