@@ -13,7 +13,7 @@ gridPET <- function(tmean = NULL,
                     start.year = 1988, end.year = 2014,
                     na.rm = TRUE){
   # input check
-  if(is.null(tmean) | is.null(prcp)){
+  if(is.null(tmean)){
     stop('Please include tmean and prcp data')
   }
   if(class(start.year) != "numeric" | class(end.year) != "numeric"){
