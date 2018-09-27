@@ -3,14 +3,13 @@
 #' @param tmean daily average temperature data for one year (365 days)
 #' @param threshold temperature threshold (use same units as data)
 #' @param index options are "grow" or "chill"
-#' @param accumulate should degree days be accumulated? 
-#' Options are "sum" or "daily".
+#' @param accumulate should degree days be accumulated? TRUE / FALSE
 #' @param start starting day (1 - 365)
 #' @param end ending day (1 - 365)
 #' 
 #' Note that na.rm is set to TRUE
 
-calc_dd_2 <- function(tmean = NULL, threshold = NULL, index = NULL, start = 1, end = 365, accumulate = FALSE){
+calc_dd <- function(tmean = NULL, threshold = NULL, index = NULL, start = 1, end = 365, accumulate = FALSE){
   
   # input checks
   if(is.null(tmean)) { stop("please provide tmin and tmean data") }
@@ -18,19 +17,22 @@ calc_dd_2 <- function(tmean = NULL, threshold = NULL, index = NULL, start = 1, e
   if(is.null(index)) { stop("please specify the index to be calculated") }
   
   # load data
-  if(class(tmean) != "RasterBrick"){ tmean <- raster::brick(tmean) }
+  if(class(tmean) != "RasterBrick"){ tmean <- raster::brick(tmean, values = TRUE) }
   if(raster::nlayers(tmean) < 365){ stop("Please provide daily tmean data") }
   if(raster::nlayers(tmean) > 365){ stop("Please provide a single year of data") }
-  
+
   # growing degree days function
   if(index == "grow"){
     # set function
     f <- function(x,y){
-      if(x > y){
-        x <- x - y
-      } else {
-        x <- 0
+      for(i in 1:length(x)){
+        if(x[i] > y){
+          x[i] <- x[i] - y
+        } else {
+          x[i] <- 0
+        }
       }
+      return(x)
     }
   }
   
@@ -38,11 +40,14 @@ calc_dd_2 <- function(tmean = NULL, threshold = NULL, index = NULL, start = 1, e
   if(index == "chill"){
     # set function
     f <- function(x,y){
-      if(x < y){
-        x <- y - x
-      } else {
-        x <- 0
+      for(i in 1:length(x)){
+        if(x[i] < y){
+          x[i] <- y - x[i]
+        } else {
+          x[i] <- 0
+        }
       }
+      return(x)
     }
   }
   
@@ -55,10 +60,10 @@ calc_dd_2 <- function(tmean = NULL, threshold = NULL, index = NULL, start = 1, e
                             fun = Vectorize(f), recycle = TRUE)
   
   # accumulate if told to do so
-  if(accumulate == "sum"){
-    result <- raster::calc(x = result, fun = sum, na.rm = TRUE)
-  }
-  if(accumulate == "daily"){
+  if(accumulate == TRUE){
+    # create new stacks
+    a <- raster::brick(raster::stack(x = result, layers = start:end), values = TRUE)
+    
     # function to calculate accumulated sum
     sum_f <- function(x){
       y <- x
@@ -69,10 +74,11 @@ calc_dd_2 <- function(tmean = NULL, threshold = NULL, index = NULL, start = 1, e
     }
     
     # run function within calc
-    result <- raster::calc(result, fun = sum_f, forcefun = TRUE)
+    b <- raster::calc(a, fun = sum_f, forcefun = TRUE)
     
     # format results
-    names(result) <- start:end
+    names(b) <- start:end
+    result <- b
   }
   
   # return result
