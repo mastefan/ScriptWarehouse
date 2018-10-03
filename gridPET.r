@@ -5,16 +5,17 @@
 #' Uses for loops and pixel indexing
 #' 
 #' @param tmean File path or raster object. Monthly average temperature.
+#' @param latitude File path or raster object. Output from gridPETlat.
 #' @param start.year Numeric. Default = 1988.
 #' @param end.year Numeric. Default = 2014.
 #' @param na.rm Logical. Passed to SPEI package functions: thornthwaite
 
-gridPET <- function(tmean = NULL,
+gridPET <- function(tmean = NULL, latitude = NULL,
                     start.year = 1988, end.year = 2014,
                     na.rm = TRUE){
   # input check
-  if(is.null(tmean)){
-    stop('Please include tmean and prcp data')
+  if(is.null(tmean | latitude)){
+    stop('Please include tmean and latitude data')
   }
   if(class(start.year) != "numeric" | class(end.year) != "numeric"){
     stop('start.year and end.year should be numeric')
@@ -22,7 +23,10 @@ gridPET <- function(tmean = NULL,
   
   # load data
   if(class(tmean) != "RasterBrick"){
-    tmean <- raster::brick(tmean, values = TRUE)
+    tmean <- raster::brick(tmean)
+  }
+  if(class(latitude) != "Raster"){
+    latitude <- raster::brick(latitude)
   }
   
   # dates
@@ -31,11 +35,6 @@ gridPET <- function(tmean = NULL,
                by = "month")
   tmean <- raster::setZ(tmean, dates, name = "time")
   names(tmean) <- zoo::as.yearmon(raster::getZ(tmean))
-  
-  # latitude
-  ref <- raster::projectExtent(tmean, "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
-  int <- raster::projectRaster(from = tmean, to = ref)
-  latitude <- raster::setValues(tmean[[1]], sp::coordinates(int)[,"y"])
   
   # potential evapotranspiration
   pet <- raster::brick(tmean, values = FALSE)
