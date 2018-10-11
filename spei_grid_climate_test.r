@@ -101,9 +101,9 @@ lat <- gridPETlat3(tmean = tmean)
 # gridPET3 test
 source("gridPET3.r")
 pet <- gridPET3(tmean = tmean, latitude = lat)
-raster::beginCluster()
-pet <- raster::clusterR(x = tmean, fun = gridSPEI3, args = list(latitude = lat), export = c("lat"))
-raster::endCluster()
+#raster::beginCluster()
+#pet <- raster::clusterR(x = tmean, fun = gridSPEI3, args = list(latitude = lat), export = c("lat"))
+#raster::endCluster()
 
 source("gridSPEI3.r")
 test <- gridSPEI3(tmean = tmean, prcp = prcp, pet = pet, scale = 2)
