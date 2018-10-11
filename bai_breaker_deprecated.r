@@ -1,4 +1,5 @@
 bai_breaker <- function(data, plot = FALSE, breaks = NULL){
+
   # remove NAs if any are present
   if(any(is.na(data))){
     a <- !is.na(data)
