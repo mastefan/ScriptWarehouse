@@ -31,12 +31,12 @@ breaker <- function(dat = NULL,
   
   # create vector of breakdates with series start and end dates attached
   if(is.null(breaks)){
-    dx <- strucchange::breakdates(strucchange::breakpoints(dat~time(dat), 
-                                                           het.err = TRUE))
+    dx0 <- strucchange::breakdates(strucchange::breakpoints(dat~time(dat), 
+                                                            het.err = TRUE))
   } else {
-    dx <- strucchange::breakdates(strucchange::breakpoints(dat~time(dat), 
-                                                           breaks = breaks, 
-                                                           het.err = TRUE))
+    dx0 <- strucchange::breakdates(strucchange::breakpoints(dat~time(dat), 
+                                                            breaks = breaks, 
+                                                            het.err = TRUE))
   }
   
   # get vector of time from ts
@@ -44,12 +44,12 @@ breaker <- function(dat = NULL,
   
   # add start and end of time series to breakpoints vector
   suppressWarnings(
-    if(is.na(dx)){
+    if(is.na(dx0)){
       # no breakpoints
       dx <- c(min(tm-1), max(tm))
     } else {
       # roll breakpoints into date series
-      dx <- c((min(tm)-1), dx, max(tm))
+      dx <- c((min(tm)-1), dx0, max(tm))
     }
   )
   
@@ -63,7 +63,11 @@ breaker <- function(dat = NULL,
   trends <- list()
   for(i in 1:(length(dx)-1)){
     wrk <- window(dat, start = dx[i], end = dx[i+1])
-    trends[i] <- list(zyp::zyp.trend.vector(y = wrk, method = "yuepilon"))
+    br <- max(as.numeric(time(wrk)))
+    wrk <- list(zyp::zyp.trend.vector(y = wrk, method = "yuepilon"))
+    wrk <- c(unlist(wrk), br)
+    names(wrk)[length(wrk)] <- "break"
+    trends[[i]] <- wrk
   }
   
   # convert nested list to dataframe
