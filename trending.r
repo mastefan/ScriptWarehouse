@@ -4,13 +4,13 @@
 #' Optionally masks the result to include 
 #' only significant results at a user-specified
 #' threshold.
-#' @param file An r object or a character file name
-#' @param change Logical, if TRUE the slope will be multiplied by the number of bands
+#' @param file An r object or file path to load using raster::brick
+#' @param method Either "lm" to use a standard linear model or "yp" to use prewhitened sen slope
 #' @param threshold Significance threshold (e.g. 0.05)
 #'
 #'https://matinbrandt.wordpress.com/2013/11/15/pixel-wise-time-series-trend-anaylsis-with-ndvi-gimms-and-r/
 
-trending <- function(file = NULL, change = FALSE, threshold = NULL){
+trending <- function(file = NULL, method, threshold = NULL){
   # input check
   if(is.null(file)){
     stop('Please specify the data source')
@@ -23,22 +23,39 @@ trending <- function(file = NULL, change = FALSE, threshold = NULL){
     dat <- file
   }
   
-  # create time variable
-  time <- 1:raster::nlayers(dat)
-  
-  # calculate linear trend
-  fun_t <- function(x) {
-    if (is.na(x[1])){
-      NA 
-    } else {
-      lm(x ~ time)$coefficients[2] }
+  # function to calculate trend: yue-pilon prewhiteneing, sen slope & mann-kendall significance tests
+  # drift years are removed in this stage
+  if(method == "yp"){
+    fun_t <- function(dat){
+      if(any(is.na(dat))){
+        NA
+      } else {
+        wrk <- ts(data = as.numeric(dat), start = 1989, end = 2014, frequency = 1)
+        for(i in c(1992, 1993, 1994, 1999, 2000)){
+          wrk[time(wrk) == i] <- NA
+        }
+        m <- zyp::zyp.trend.vector(y = wrk, x = time(wrk), method = "yuepilon")
+        unname(m["trend"])
+      }
     }
-  trend <- raster::calc(dat, fun_t)
-  
-  # calculate change over time
-  if(change == TRUE){
-    trend <- trend * nlayers(dat)
   }
+  if(method == "lm"){
+    fun_t <- function(dat){
+      if(any(is.na(dat))){
+        NA
+      } else {
+        wrk <- ts(data = as.numeric(dat), start = 1989, end = 2014, frequency = 1)
+        for(i in c(1992, 1993, 1994, 1999, 2000)){
+          wrk[time(wrk) == i] <- NA
+        }
+        m <- lm(wrk ~ time(wrk))
+        unname(coefficients(m)[2])
+      }
+    }
+  }
+  
+  # calculate trend
+  trend <- raster::calc(x = dat, fun = fun_t)
   
   # if threshold unspecified, return trend
   if(is.null(threshold)){    
@@ -47,15 +64,37 @@ trending <- function(file = NULL, change = FALSE, threshold = NULL){
   
   # if threshold specified, return only pixels above threshold
   if(!is.null(threshold)){
-    # calculate p-values
-    fun_p <- function(x) { 
-      if (is.na(x[1])){
-        NA 
-      } else {
-        m = lm(x ~ time); summary(m)$coefficients[8]
+    # function to extract significance
+    if(method == "yp"){
+      fun_p <- function(dat){
+        if(any(is.na(dat))){
+          NA
+        } else {
+          wrk <- ts(data = as.numeric(dat), start = 1989, end = 2014, frequency = 1)
+          for(i in c(1992, 1993, 1994, 1999, 2000)){
+            wrk[time(wrk) == i] <- NA
+          }
+          m <- zyp::zyp.trend.vector(y = wrk, x = time(wrk), method = "yuepilon")
+          unname(m["sig"])
+        }
+      }
+    }
+    if(method == "lm"){
+      fun_p <- function(dat){
+        if(any(is.na(dat))){
+          NA
+        } else {
+          wrk <- ts(data = as.numeric(dat), start = 1989, end = 2014, frequency = 1)
+          for(i in c(1992, 1993, 1994, 1999, 2000)){
+            wrk[time(wrk) == i] <- NA
+          }
+          m <- lm(wrk ~ time(wrk))
+          unname(summary(m)$coefficients[8])
+        }
       }
     }
     
+    # calculate p-values
     p_val <- raster::calc(dat, fun_p)
     
     # reclassify p-values at desired threshold
@@ -69,5 +108,5 @@ trending <- function(file = NULL, change = FALSE, threshold = NULL){
     # return significant trends
     return(trend_sig)
   }
-  }
+}
   
