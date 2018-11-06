@@ -10,12 +10,9 @@
 #'
 #'https://matinbrandt.wordpress.com/2013/11/15/pixel-wise-time-series-trend-anaylsis-with-ndvi-gimms-and-r/
 
-<<<<<<< HEAD
 trending <- function(file = NULL, method = NULL, threshold = NULL){
-=======
-trending <- function(file = NULL, method, threshold = NULL){
->>>>>>> 7df67cd1ab686b3ab5913014caceed7e2857d919
-  # input check
+
+    # input check
   if(is.null(file)){
     stop('Please specify the data source')
   }
