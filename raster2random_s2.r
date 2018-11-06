@@ -19,8 +19,8 @@ raster2random_s2 <- function(in.dep = NULL, dep.name = "avhrrp",
                              in.ind = NULL, #months = 1:12, 
                              na.rm = TRUE, no.drift = TRUE){
   
-  # ensure that INDEPENDENT data is formatted as a list
-  if(class(in.ind) != "list") { in.ind <- list(independent = in.ind) }
+  ## ensure that INDEPENDENT data is formatted as a list
+  #if(class(in.ind) != "list") { in.ind <- list(independent = in.ind) }
   
   ## ensure that months are formatted as a list
   #if(class(months) != "list") { months <- list(independent = months)}
@@ -35,7 +35,7 @@ raster2random_s2 <- function(in.dep = NULL, dep.name = "avhrrp",
 
   # convert selected INDEPENDENT data to a dataframe
   #ind <- as.data.frame(ind, stringsAsFactors = FALSE)
-  ind <- as.data.frame(in.ind, stringsAsFactors = FALSE)
+  #ind <- as.data.frame(in.ind, stringsAsFactors = FALSE)
   
   # prepare dependent data
   dep <- raster::as.data.frame(in.dep)

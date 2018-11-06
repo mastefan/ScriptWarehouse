@@ -7,11 +7,13 @@
 #' 
 #' @param in.data Named list of input rasters. Can handle annual or 
 #' monthly data.
+#' @param months Numeric vector of months (columns) to include. Ignored if 
+#' data is at an annual timestep.
 #' 
 #' Note that band naming is done automatically, and can account for data 
 #' where orbital drift years have been removed
 
-raster2random_s1 <- function(in.data = NULL){
+raster2random_s1 <- function(in.data = NULL, months = 1:12){
   
   # check that the inputs are a list
   if(class(in.data) != "list"){
@@ -55,17 +57,18 @@ raster2random_s1 <- function(in.data = NULL){
     # annual data
     if(raster::nlayers(in.data[[i]]) < 28){
       o <- raster::as.data.frame(in.data[[i]])
-      o <- data.frame(pix = 1:nrow(o), o)
+      o <- data.frame(pix = 1:nrow(o), o, stringsAsFactors = FALSE)
       o <- reshape2::melt(o, id = "pix")
-      #colnames(o) <- c("pix","time",names(in.data[i]))
-      #out[i] <- list(o)
-      out[i] <- list(o$value)
+      out[i] <- list(data.frame(o[,3]))
+      colnames(out[[i]]) <- (names(in.data)[i])
+      #names(out[i]) <- names(in.data[i])
     }
-    # monthly data
+    # monthly
     if(raster::nlayers(in.data[[i]]) > 28){
       o <- raster::as.data.frame(in.data[[i]])
       colnames(o) <- paste(names(in.data[i]), 
                            rep(month.abb, (raster::nlayers(in.data[[i]])/12), sep = "."))
+      o <- o[,months]
       o <- sapply(unique(names(o)), function(x) unname(unlist(o[,names(o)==x])))
       out[i] <- list(o)
     }
