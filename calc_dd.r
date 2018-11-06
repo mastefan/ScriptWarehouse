@@ -10,17 +10,23 @@
 #' 
 #' Note that na.rm is set to TRUE
 
-calc_dd_2 <- function(tmean = NULL, threshold = NULL, index = NULL, start = 1, end = 365, accumulate = FALSE){
+calc_dd <- function(tmean = NULL, threshold = NULL, index = NULL, start = 1, end = 365, accumulate = NULL){
   
   # input checks
   if(is.null(tmean)) { stop("please provide tmin and tmean data") }
   if(is.null(threshold)) { stop("please establish a threshold") }
   if(is.null(index)) { stop("please specify the index to be calculated") }
   
-  # load data
-  if(class(tmean) != "RasterBrick"){ tmean <- raster::brick(tmean) }
+  # length checks
   if(raster::nlayers(tmean) < 365){ stop("Please provide daily tmean data") }
   if(raster::nlayers(tmean) > 365){ stop("Please provide a single year of data") }
+  
+  # load specified data bands
+  if(class(tmean) != "RasterBrick"){
+    tmean <- raster::stack(x = tmean, bands = start:end)
+  } else {
+    tmean <- raster::stack(x = tmean, layers = start:end)
+  }
   
   # growing degree days function
   if(index == "grow"){
@@ -71,8 +77,6 @@ calc_dd_2 <- function(tmean = NULL, threshold = NULL, index = NULL, start = 1, e
     # run function within calc
     result <- raster::calc(result, fun = sum_f, forcefun = TRUE)
     
-    # format results
-    names(result) <- start:end
   }
   
   # return result
